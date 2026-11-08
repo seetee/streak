@@ -1,32 +1,91 @@
 # Streake
 
-A PWA that shows "Dagar utan incident" and the number of days since the last incident. Tapping an NFC sticker resets it. Static files on GitHub Pages, data in Supabase.
+[![tests](https://img.shields.io/github/actions/workflow/status/seetee/streak/test.yml?branch=main&style=flat-square&label=tests)](https://github.com/seetee/streak/actions/workflows/test.yml)
+[![vibe coded](https://img.shields.io/badge/vibe_coded-%E2%9C%A8-ff69b4?style=flat-square)](https://en.wikipedia.org/wiki/Vibe_coding)
+[![coded with Claude](https://img.shields.io/badge/coded_with-Claude_Code-CC785C?style=flat-square&logo=anthropic)](https://claude.ai/code)
+[![license: AGPL v3](https://img.shields.io/badge/license-AGPL_v3-blue?style=flat-square)](LICENSE)
+[![dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen?style=flat-square)](app.js)
+[![website](https://img.shields.io/badge/website-GitHub_Pages-222?style=flat-square&logo=githubpages)](https://seetee.github.io/streak/)
+
+A days-since-the-last-incident counter you reset with a physical tap. It is an installable web app that shows one heading and one giant number, and an NFC sticker in a locked room resets it to zero.
+
+**Live:** [seetee.github.io/streak](https://seetee.github.io/streak/)
+
+## How it works
+
+| Part | What it does |
+|---|---|
+| **Page** | Static HTML, CSS and JavaScript on GitHub Pages, with no framework or build step. |
+| **Data** | Supabase stores every incident in the `incidents` table. |
+| **Reset** | The sticker holds a URL with a secret after the `#`. Tapping it opens the page, which sends the secret to the `reset_streak` database function. |
+| **Number** | Calendar days since the newest incident, in the viewer's local time. It refreshes hourly and when you return to the page. |
+| **Offline** | A service worker caches the app, and the last known date keeps the number on screen. |
 
 ## Setup
 
 1. **Create the database.** Make a project at [supabase.com](https://supabase.com) and pick an EU region.
 2. **Make a secret:** `openssl rand -hex 16`
-3. **Set up the tables.** Paste all of `setup.sql` into Supabase → SQL Editor. Make these changes in the editor, not in the file, because the repo is public and the secret must never be committed: replace `CHANGE-ME-LONG-RANDOM-SECRET` with the secret, and if you know when the last incident happened, change `now() - interval '1 day'` in the last line to that date, e.g. `'2026-10-01'`. Then run it.
+3. **Set up the tables.** Paste all of `setup.sql` into Supabase → SQL Editor and make these changes in the editor, not in the file:
+   - Replace `CHANGE-ME-LONG-RANDOM-SECRET` with the secret.
+   - Change `now() - interval '1 day'` in the last line to the date of the last incident, e.g. `'2026-10-01'`, if you know it.
+
+   Then run it.
 4. **Connect the page.** Copy the Project URL and publishable key (`sb_publishable_…`) from the **Connect** button in the Supabase dashboard into `config.js`.
 5. **Publish.** Push to GitHub, then turn on Pages under Settings → Pages (deploy from branch, root folder).
 6. **Write the sticker.** Use a free writer app such as NFC Tools to write this URL record to an NTAG213 sticker:
-   `https://<user>.github.io/<repo>/#reset=<secret>`
+
+   ```
+   https://<user>.github.io/<repo>/#reset=<secret>
+   ```
+
+   Lock the sticker only after a test tap works, because locking is permanent.
+
+To change the wording, edit the heading in `index.html`.
 
 ## Testing
 
-- `python3 -m http.server` in this folder, then open http://localhost:8000. Only the text and the number should show.
-- Add `#reset=wrong` to the address: the number stays the same and no row is added in Supabase.
-- Add `#reset=<secret>`: the number drops to 0, a new row appears in `incidents`, and the secret disappears from the address bar. Add it again within a minute: no new row.
-- Before the first push, check that the real secret isn't in any file: `grep -r '<secret>' .`
-- Tap the sticker on both an Android phone and an iPhone.
+**Automated:** this runs `app.js` against a simulated browser, and GitHub Actions runs it on every push.
+
+```sh
+node tests/check-app.mjs
+```
+
+**By hand:** run `python3 -m http.server` in this folder and open <http://localhost:8000>. Only the heading and the number should show.
+
+| Add to the address | Expected result |
+|---|---|
+| `#reset=wrong` | The number stays the same and no row is added. |
+| `#reset=<secret>` | The number drops to 0, a row is added, and the secret leaves the address bar. |
+| `#reset=<secret>` again within a minute | No new row. |
+
+Then tap the sticker on both an Android phone and an iPhone.
+
+Every successful test reset is a real row. Remove each one in the SQL Editor:
+
+```sql
+delete from incidents where id = (select max(id) from incidents);
+```
+
+## Security
+
+- **The locked room is the access control.** Anyone who gets in can read the secret off the sticker with any NFC app.
+- **The secret stays out of the repo.** The repo is public, so never save the real secret in `setup.sql`. Before pushing, check with `grep -r '<secret>' .`
+- **The secret stays out of server logs.** Browsers don't send the part of a URL after `#` to the server, and the page removes it from the address bar after use.
+- **The publishable key is public by design.** It can read `incidents` and call `reset_streak`, nothing more. The `secrets` table is closed to it.
 
 ## Maintenance
 
-- **Change the secret.** Supabase → SQL Editor:
-  `update secrets set hash = sha256(convert_to('<new secret>', 'utf8'));`
-  Then rewrite the sticker.
-- **After changing app files,** bump `streake-v1` in `sw.js` (to `streake-v2` and so on). Otherwise installed phones keep the old version.
-- **A tap within a minute of a reset is ignored,** so a double tap isn't counted twice.
-- **Free Supabase projects pause** after about a week with too little database activity, so long holidays can trigger it. You get a warning email, and it can be restored from the Supabase dashboard. While paused, the page shows the last known number and taps do nothing.
-- **Security is the locked room.** Anyone who gets in can read the secret off the sticker with any NFC app.
-- **History** is kept in `incidents`. Rows are only ever added, never edited or deleted, so a history graph can be built later from the gaps between rows.
+- **Change the secret.** Run this in the SQL Editor, then rewrite the sticker:
+
+  ```sql
+  update secrets set hash = sha256(convert_to('<new secret>', 'utf8'));
+  ```
+
+- **Change app files.** Bump `streake-v1` in `sw.js` (to `streake-v2` and so on), or installed phones keep the old version.
+- **Double taps.** A tap within a minute of a reset is ignored, so a double tap isn't counted twice.
+- **Paused database.** Free Supabase projects pause after about a week with too little database activity, so long holidays can trigger it. You get a warning email, and you can restore the project from the Supabase dashboard. While it is paused, the page shows the last known number and taps do nothing.
+- **History.** The public key can't edit or delete rows in `incidents`, so a history graph can be built later from the gaps between rows.
+
+## License
+
+[GNU AGPL v3](LICENSE).
