@@ -1,10 +1,22 @@
 # Plan: "Streake" PWA
 
 ## Status (2026-11-08)
-- **Done:** all app files, `setup.sql`, icons, `README.md` (setup steps). Pre-launch fixes: secret stays out of the repo, publishable key, reset handled on an open page, number refreshes on a page left open, generic heading, `noindex`.
-- **Not yet tested:** no live Supabase project yet, so loading data, resetting, the publishable key in `apikey` only, the service worker and installing as an app haven't been tried.
-- **Next:** follow `README.md` → Setup steps 1–7, then → Testing.
+- **Done:** live at <https://seetee.github.io/streak/> on Supabase. Reset tested on localhost (right secret, wrong secret, one-minute guard). Security audit done and its fixes pushed; sign-ups off, sticker locked, `reset_streak` revoked from signed-in users.
+- **Still to confirm:**
+  - A real sticker tap after the permission change, on Android and iPhone, with the new app version (`streake-v2`).
+  - Installing as an app and reloading offline.
+  - The start date in `incidents`. The only row is the 2026-11-07 default, not a real incident. Remove any test rows afterwards.
+  - Security Advisor: dismiss the `anon` warning on `reset_streak` (intentional) and check that the `authenticated` warning is gone.
+  - Leftover copies of the secret deleted from browser history and the Supabase SQL Editor.
+- **Cross-repo:** `ttrpg_progress_clock` and `jobbar_du_som_du_ska` got the same cache cleanup fix (only delete their own caches). Until that is live, they can still delete Streake's offline files. `bp`, `codepen`, `css`, `hardware`, `manual` and `osmosfeed` share `seetee.github.io` too and haven't been checked for this.
 - **Later:** history graph (data already stored).
+
+### Decisions from the audit
+- **`anon` can call `reset_streak`:** intentional, because the page has to call it and the secret check protects it.
+- **No keep-alive for Supabase pausing:** restore by hand if a long holiday pauses the project. Add a scheduled ping only if it becomes a nuisance.
+- **No Content-Security-Policy:** nothing on the page can inject code, and whoever could tamper with `app.js` could remove the policy too.
+- **No branch protection:** one-person repo.
+- **Failed resets show no error:** the number not dropping to 0 is the feedback.
 
 ## Context
 Streake shows one thing: the text **"Dagar utan incident"** and a giant number (whole days since the last incident). Three people can reset it; the physical reset is **one NFC sticker** in a locked conference room (the locked door is the access control). Every incident is stored, so a history graph can be added later without migrating data. Hosting is GitHub Pages (static), so a small backend holds the data.
