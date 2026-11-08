@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streake</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root { color-scheme: light dark; --bg: #fafafa; --fg: #111; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #111; --fg: #fafafa; } }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg);
+    display: grid; place-content: center; text-align: center;
+    font-family: system-ui, sans-serif; padding: 1rem; box-sizing: border-box;
+  }
+  p { margin: 0; font-size: clamp(1.5rem, 6vw, 3.5rem); }
+  #days { font-size: clamp(8rem, 45vmin, 40rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main>
+  <p>Dagar utan incident</p>
+  <div id="days" role="status" aria-live="polite">–</div>
+</main>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
