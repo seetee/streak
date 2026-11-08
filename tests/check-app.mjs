@@ -55,4 +55,15 @@ before = reads();
 interval.f();
 await tick();
 assert.equal(reads(), before + 1, "hourly refresh");
+
+// A malformed link must not call the reset, and the number must still load.
+const resets = rpcs().length;
+before = reads();
+location.hash = "#reset=%";
+listeners.hashchange();
+await tick();
+assert.equal(rpcs().length, resets, "no reset on a malformed link");
+assert.equal(location.hash, "", "malformed hash stripped");
+assert.equal(reads(), before + 1, "number loads after a malformed link");
+
 console.log("all checks passed");

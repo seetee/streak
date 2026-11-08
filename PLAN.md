@@ -3,7 +3,7 @@
 ## Status (2026-11-08)
 - **Done:** all app files, `setup.sql`, icons, `README.md` (setup steps). Pre-launch fixes: secret stays out of the repo, publishable key, reset handled on an open page, number refreshes on a page left open, generic heading, `noindex`.
 - **Not yet tested:** no live Supabase project yet, so loading data, resetting, the publishable key in `apikey` only, the service worker and installing as an app haven't been tried.
-- **Next:** follow `README.md` → Setup steps 1–6, then → Testing.
+- **Next:** follow `README.md` → Setup steps 1–7, then → Testing.
 - **Later:** history graph (data already stored).
 
 ## Context
@@ -35,7 +35,7 @@ Streake shows one thing: the text **"Dagar utan incident"** and a giant number (
 - The Supabase publishable key in the repo is public by design; protection is RLS plus the function.
 
 ## Verification
-1. Serve locally (`python3 -m http.server`); the page shows only the text and the number.
+1. Serve locally (`python3 -m http.server --bind 127.0.0.1`); the page shows only the text and the number.
 2. `/#reset=wrong` → rejected, number unchanged, no new row. `/#reset=<right>` → number 0, new row in `incidents`, hash removed.
 3. DevTools → Application: manifest and service worker pass; offline reload still shows the last value.
 4. Deploy to GitHub Pages, write the tag with a free NFC writer app (e.g. NFC Tools), tap from Android and iPhone.

@@ -27,6 +27,8 @@ begin
   end if;
   insert into incidents default values;
 end $$;
+-- Public on purpose: the secret check above is the protection. Nobody signs in, so nobody else needs it.
+revoke execute on function reset_streak(text) from public, authenticated;
 grant execute on function reset_streak(text) to anon;
 
 -- Starting point: set to the real date of the last incident, e.g. '2026-10-01'.

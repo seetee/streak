@@ -17,12 +17,12 @@ async function load() {
     if (!r.ok) throw new Error(r.status);
     const [row] = await r.json();
     if (row) {
-      localStorage.setItem("last", row.occurred_at);
+      localStorage.setItem("streake-last", row.occurred_at); // storage is shared with every site on seetee.github.io
       show(row.occurred_at);
     }
   } catch {
     // offline or backend down: fall back to the last known value
-    const last = localStorage.getItem("last");
+    const last = localStorage.getItem("streake-last");
     if (last) show(last);
   }
 }
@@ -39,7 +39,9 @@ async function handleHash() {
   const m = location.hash.match(/^#reset=(.+)$/);
   if (m) {
     history.replaceState(null, "", location.pathname + location.search); // keep the secret out of the address bar
-    await reset(decodeURIComponent(m[1]));
+    try {
+      await reset(decodeURIComponent(m[1]));
+    } catch {} // malformed link such as #reset=%: no reset, but the number must still load
   }
   load();
 }

@@ -30,9 +30,10 @@ A days-since-the-last-incident counter you reset with a physical tap. It is an i
    - Change `now() - interval '1 day'` in the last line to the date of the last incident, e.g. `'2026-10-01'`, if you know it.
 
    Then run it.
-4. **Connect the page.** Copy the Project URL and publishable key (`sb_publishable_…`) from the **Connect** button in the Supabase dashboard into `config.js`.
-5. **Publish.** Push to GitHub, then turn on Pages under Settings → Pages (deploy from branch, root folder).
-6. **Write the sticker.** Use a free writer app such as NFC Tools to write this URL record to an NTAG213 sticker:
+4. **Turn off sign-ups.** Under Authentication in the Supabase dashboard, turn off "Allow new users to sign up". The app has no logins, and leaving this on lets strangers register email addresses through your project.
+5. **Connect the page.** Copy the Project URL and publishable key (`sb_publishable_…`) from the **Connect** button in the Supabase dashboard into `config.js`.
+6. **Publish.** Push to GitHub, then turn on Pages under Settings → Pages (deploy from branch, root folder).
+7. **Write the sticker.** Use a free writer app such as NFC Tools to write this URL record to an NTAG213 sticker:
 
    ```
    https://<user>.github.io/<repo>/#reset=<secret>
@@ -50,7 +51,7 @@ To change the wording, edit the heading in `index.html`.
 node tests/check-app.mjs
 ```
 
-**By hand:** run `python3 -m http.server` in this folder and open <http://localhost:8000>. Only the heading and the number should show.
+**By hand:** run `python3 -m http.server --bind 127.0.0.1` in this folder and open <http://localhost:8000>. Only the heading and the number should show.
 
 | Add to the address | Expected result |
 |---|---|
@@ -68,10 +69,17 @@ delete from incidents where id = (select max(id) from incidents);
 
 ## Security
 
-- **The locked room is the access control.** Anyone who gets in can read the secret off the sticker with any NFC app.
-- **The secret stays out of the repo.** The repo is public, so never save the real secret in `setup.sql`. Before pushing, check with `grep -r '<secret>' .`
+- **The locked room is the access control.** Anyone who gets in can read the secret off the sticker with any NFC app, and can then reset from anywhere until the secret is changed. Resets don't record who made them. If you suspect a leak, change the secret (see Maintenance).
+- **The secret stays out of the repo.** The repo is public, so never save the real secret in `setup.sql`. Before pushing, run this and paste the secret when asked. It keeps the secret out of your shell history and should list no files:
+
+  ```sh
+  read -rs s; grep -rlF "$s" .
+  ```
+
+- **Other copies of the secret.** It can also linger in browser history and in the Supabase SQL Editor, so delete it there after setup or testing.
 - **The secret stays out of server logs.** Browsers don't send the part of a URL after `#` to the server, and the page removes it from the address bar after use.
-- **The publishable key is public by design.** It can read `incidents` and call `reset_streak`, nothing more. The `secrets` table is closed to it.
+- **The publishable key is public by design.** It can read `incidents` and call `reset_streak`, nothing more, as long as sign-ups stay off. The `secrets` table is closed to it.
+- **Supabase's Security Advisor warns about `reset_streak`.** The warning that the `anon` role can call it is expected: the page has to call it, and the secret check inside the function is the protection.
 
 ## Maintenance
 
@@ -81,7 +89,7 @@ delete from incidents where id = (select max(id) from incidents);
   update secrets set hash = sha256(convert_to('<new secret>', 'utf8'));
   ```
 
-- **Change app files.** Bump `streake-v1` in `sw.js` (to `streake-v2` and so on), or installed phones keep the old version.
+- **Change app files.** Bump the `streake-v…` number in `sw.js`, or installed phones keep the old version.
 - **Double taps.** A tap within a minute of a reset is ignored, so a double tap isn't counted twice.
 - **Paused database.** Free Supabase projects pause after about a week with too little database activity, so long holidays can trigger it. You get a warning email, and you can restore the project from the Supabase dashboard. While it is paused, the page shows the last known number and taps do nothing.
 - **History.** The public key can't edit or delete rows in `incidents`, so a history graph can be built later from the gaps between rows.
